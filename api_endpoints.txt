@@ -1,0 +1,252 @@
+====================================================================
+  ECODASH API — Referência de Endpoints para o Front-end
+  Base URL: http://localhost:8000
+  Documentação interativa: http://localhost:8000/api/docs/
+====================================================================
+
+AUTENTICAÇÃO
+------------
+Todas as rotas (exceto signup e login) exigem o header:
+  Authorization: Bearer <access_token>
+
+O token de acesso expira em 1 hora. Use o endpoint de refresh para renová-lo.
+
+
+====================================================================
+  1. AUTENTICAÇÃO
+====================================================================
+
+──────────────────────────────────────────────────────────────────
+POST /api/auth/signup/
+  Descrição : Cadastrar novo usuário
+  Auth      : Não requer
+
+  Body (JSON):
+    username  string  obrigatório  Ex: "joao"
+    password  string  obrigatório  Ex: "senha123"
+    email     string  opcional     Ex: "joao@email.com"
+
+  Resposta 201 – Criado:
+    {
+      "id": 1,
+      "username": "joao",
+      "access": "<jwt_access_token>",
+      "refresh": "<jwt_refresh_token>"
+    }
+
+  Resposta 400 – Erro:
+    { "error": "username e password são obrigatórios" }
+    { "error": "username já existe" }
+
+──────────────────────────────────────────────────────────────────
+POST /api/auth/login/
+  Descrição : Autenticar usuário existente
+  Auth      : Não requer
+
+  Body (JSON):
+    username  string  obrigatório
+    password  string  obrigatório
+
+  Resposta 200 – OK:
+    {
+      "id": 1,
+      "username": "joao",
+      "access": "<jwt_access_token>",
+      "refresh": "<jwt_refresh_token>"
+    }
+
+  Resposta 401 – Não autorizado:
+    { "error": "Credenciais inválidas" }
+
+──────────────────────────────────────────────────────────────────
+POST /api/auth/refresh/
+  Descrição : Renovar o access token usando o refresh token
+  Auth      : Não requer
+
+  Body (JSON):
+    refresh  string  obrigatório  (o refresh_token recebido no login)
+
+  Resposta 200 – OK:
+    {
+      "access": "<novo_jwt_access_token>",
+      "refresh": "<novo_jwt_refresh_token>"
+    }
+
+
+====================================================================
+  2. COLETOR
+====================================================================
+
+──────────────────────────────────────────────────────────────────
+GET /api/collector/token/
+  Descrição : Obter o token do script coletor do usuário autenticado
+  Auth      : Bearer JWT
+
+  Resposta 200 – OK:
+    {
+      "token": "abc123...",
+      "created_at": "2024-01-15T10:30:00Z",
+      "last_used_at": "2024-01-16T08:00:00Z"   // pode ser null
+    }
+
+──────────────────────────────────────────────────────────────────
+POST /api/collector/token/
+  Descrição : Regenerar (invalidar o atual e criar novo) token do coletor
+  Auth      : Bearer JWT
+  Body      : (vazio)
+
+  Resposta 200 – OK:
+    {
+      "token": "novotoken456..."
+    }
+
+──────────────────────────────────────────────────────────────────
+GET /api/collector/download/
+  Descrição : Baixar o script coletor (.py) pré-configurado com o token
+              do usuário autenticado
+  Auth      : Bearer JWT
+
+  Resposta 200 – OK:
+    Content-Type: text/x-python
+    Content-Disposition: attachment; filename="ecodash-collector.py"
+    (arquivo Python para download)
+
+
+====================================================================
+  3. ANÁLISES
+====================================================================
+
+──────────────────────────────────────────────────────────────────
+GET /api/analyses/
+  Descrição : Listar todas as análises do usuário autenticado
+  Auth      : Bearer JWT  ou  X-Collector-Token
+
+  Resposta 200 – OK (array):
+    [
+      {
+        "id": 1,
+        "software_name": "Meu App",
+        "sci_score": 0.0042,
+        "grade": "AAA",
+        "region": "br-south",
+        "energy_kwh": 0.015,
+        "created_at": "2024-01-15T10:30:00Z"
+      },
+      ...
+    ]
+
+  Notas:
+    - grade pode ser: AAA, AA, A, B, C ou D
+    - Ordenado do mais recente para o mais antigo
+
+──────────────────────────────────────────────────────────────────
+POST /api/analyses/
+  Descrição : Criar nova análise de eficiência energética
+  Auth      : Bearer JWT  ou  X-Collector-Token
+
+  Body (JSON):
+    software_name  string  obrigatório  Ex: "Meu App"
+    sci_score      number  obrigatório  Ex: 0.0042
+    grade          string  obrigatório  Valores: AAA | AA | A | B | C | D
+    energy_kwh     number  obrigatório  Ex: 0.015
+    region         string  obrigatório  Ex: "br-south"  (máx 10 chars)
+    hardware_type  string  obrigatório  Ex: "cloud"     (máx 20 chars)
+
+  Resposta 201 – Criado:
+    {
+      "id": 42,
+      "grade": "AAA",
+      "sci_score": 0.0042
+    }
+
+  Resposta 400 – Erro:
+    { "error": "Campos obrigatórios: ['sci_score', 'grade', ...]" }
+
+──────────────────────────────────────────────────────────────────
+GET /api/analyses/{id}/
+  Descrição : Detalhar uma análise específica
+  Auth      : Bearer JWT  ou  X-Collector-Token
+
+  Path param:
+    id  integer  obrigatório  ID da análise
+
+  Resposta 200 – OK:
+    {
+      "id": 42,
+      "created_at": "2024-01-15T10:30:00Z",
+      "software_name": "Meu App",
+      "sci_score": 0.0042,
+      "grade": "AAA",
+      "energy_kwh": 0.015,
+      "region": "br-south",
+      "hardware_type": "cloud"
+    }
+
+  Resposta 404 – Não encontrado
+
+──────────────────────────────────────────────────────────────────
+DELETE /api/analyses/{id}/
+  Descrição : Excluir uma análise
+  Auth      : Bearer JWT  ou  X-Collector-Token
+
+  Path param:
+    id  integer  obrigatório  ID da análise
+
+  Resposta 204 – Sem conteúdo (excluído com sucesso)
+
+
+====================================================================
+  4. DASHBOARD
+====================================================================
+
+──────────────────────────────────────────────────────────────────
+GET /api/dashboard/
+  Descrição : Resumo estatístico das análises do usuário autenticado
+  Auth      : Bearer JWT
+
+  Resposta 200 – OK:
+    {
+      "total": 15,
+      "avg_sci": 0.003821,
+      "grades": {
+        "AAA": 5,
+        "AA": 4,
+        "A": 3,
+        "B": 2,
+        "C": 1
+      },
+      "recent": [
+        {
+          "id": 42,
+          "software_name": "Meu App",
+          "sci_score": 0.0042,
+          "grade": "AAA",
+          "created_at": "2024-01-15T10:30:00Z"
+        },
+        ...  // até 5 itens mais recentes
+      ]
+    }
+
+
+====================================================================
+  RESUMO RÁPIDO
+====================================================================
+
+  Método  Endpoint                  Auth    Descrição
+  ------  ------------------------  ------  -------------------------
+  POST    /api/auth/signup/         Não     Cadastro
+  POST    /api/auth/login/          Não     Login
+  POST    /api/auth/refresh/        Não     Renovar token
+  GET     /api/collector/token/     JWT     Ver token do coletor
+  POST    /api/collector/token/     JWT     Regenerar token do coletor
+  GET     /api/collector/download/  JWT     Baixar script coletor
+  GET     /api/analyses/            JWT/CT  Listar análises
+  POST    /api/analyses/            JWT/CT  Criar análise
+  GET     /api/analyses/{id}/       JWT/CT  Detalhar análise
+  DELETE  /api/analyses/{id}/       JWT/CT  Excluir análise
+  GET     /api/dashboard/           JWT     Dados do dashboard
+
+  JWT = Authorization: Bearer <token>
+  CT  = X-Collector-Token: <token>  (usado pelo script coletor)
+
+====================================================================
