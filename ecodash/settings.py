@@ -13,6 +13,16 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+# O Render injeta automaticamente o hostname público do serviço.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS = [f"https://{RENDER_EXTERNAL_HOSTNAME}"]
+
+# O Render termina o TLS no proxy e repassa o protocolo neste header.
+# Sem isso, o Django acha que está em HTTP e o admin/login via HTTPS quebra.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # ─── Apps ─────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -32,6 +42,7 @@ INSTALLED_APPS = [
 # ─── Middleware ────────────────────────────────────────────────────────────────
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",      # serve estáticos em prod; logo após o security
     "corsheaders.middleware.CorsMiddleware",           # deve vir antes de CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -159,7 +170,22 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# WhiteNoise serve os estáticos comprimidos e versionados (manifest) em produção.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ─── Segurança de cookies (produção) ──────────────────────────────────────────
+if not DEBUG:
+    CSRF_COOKIE_SECURE   = True
+    SESSION_COOKIE_SECURE = True
 
 # ─── EcoDash ──────────────────────────────────────────────────────────────────
 ECODASH_BASE_URL = os.environ.get("ECODASH_BASE_URL", "http://localhost:8000")

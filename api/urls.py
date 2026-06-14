@@ -5,6 +5,7 @@ from .views import (
     CollectorTokenView, CollectorDownloadView,
     AnaliseView, AnaliseDetailView,
     DashboardView,
+    AnaliseRecommendationsView, AnaliseSummaryView, AIChatView,
 )
 
 urlpatterns = [
@@ -23,4 +24,9 @@ urlpatterns = [
 
     # Dashboard
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
+
+    # IA
+    path('analyses/<int:pk>/recommendations/', AnaliseRecommendationsView.as_view(), name='analise_recommendations'),
+    path('analyses/<int:pk>/summary/', AnaliseSummaryView.as_view(), name='analise_summary'),
+    path('chat/', AIChatView.as_view(), name='ai_chat'),
 ]

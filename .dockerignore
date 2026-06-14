@@ -15,4 +15,6 @@ db.sqlite3
 *.sqlite3
 .git/
 .gitignore
-README.md
+*.md
+staticfiles/
+media/

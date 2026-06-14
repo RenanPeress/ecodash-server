@@ -96,3 +96,38 @@ class DashboardResponseSerializer(serializers.Serializer):
 
 class ErrorSerializer(serializers.Serializer):
     error = serializers.CharField()
+
+
+# ── IA ────────────────────────────────────────────────────────────────────────
+
+class ChatHistoryItemSerializer(serializers.Serializer):
+    role    = serializers.ChoiceField(choices=['user', 'assistant'])
+    content = serializers.CharField(max_length=4000)
+
+
+class ChatRequestSerializer(serializers.Serializer):
+    message = serializers.CharField(min_length=1, max_length=2000)
+    history = ChatHistoryItemSerializer(many=True, required=False, default=list)
+
+    def validate_history(self, value):
+        if len(value) > 10:
+            raise serializers.ValidationError('Histórico limitado a 10 mensagens.')
+        return value
+
+
+class RecommendationItemSerializer(serializers.Serializer):
+    title       = serializers.CharField()
+    description = serializers.CharField()
+    impact      = serializers.ChoiceField(choices=['alto', 'medio', 'baixo'])
+
+
+class RecommendationsResponseSerializer(serializers.Serializer):
+    recommendations = RecommendationItemSerializer(many=True)
+
+
+class SummaryResponseSerializer(serializers.Serializer):
+    summary = serializers.CharField()
+
+
+class ChatResponseSerializer(serializers.Serializer):
+    response = serializers.CharField()

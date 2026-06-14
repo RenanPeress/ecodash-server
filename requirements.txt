@@ -14,6 +14,10 @@ django-cors-headers==4.7.0
 
 # Production server
 gunicorn==23.0.0
+whitenoise==6.9.0
+
+# IA
+anthropic>=0.50.0
 
 # Métricas SCI (metrics_sci.py)
 psutil==6.1.1

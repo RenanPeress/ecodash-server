@@ -4,6 +4,7 @@ from django.db.models import Avg, Count
 from django.http import HttpResponse
 from django.utils import timezone
 from pathlib import Path
+import anthropic as anthropic_exc
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -18,7 +19,10 @@ from .serializers import (
     CollectorTokenResponseSerializer, CollectorTokenRegenResponseSerializer,
     AnaliseListItemSerializer, AnaliseCreateSerializer, AnaliseCreateResponseSerializer,
     AnaliseDetailSerializer, DashboardResponseSerializer, ErrorSerializer,
+    ChatRequestSerializer, RecommendationsResponseSerializer,
+    SummaryResponseSerializer, ChatResponseSerializer,
 )
+from .ai.service import get_recommendations, get_summary, chat as ai_chat
 
 User = get_user_model()
 DUAL_AUTH = [JWTAuthentication, CollectorTokenAuthentication]
@@ -239,3 +243,100 @@ class DashboardView(APIView):
             'grades': grades,
             'recent': recent,
         })
+
+
+# ── IA ────────────────────────────────────────────────────────────────────────
+
+_AI_ERROR = {'error': 'Serviço de IA indisponível. Tente novamente em instantes.'}
+
+
+def _analise_to_dict(a: Analise) -> dict:
+    return a.payload | {
+        'id': a.id,
+        'software_name': a.software_name,
+        'sci_score': a.sci_score,
+        'grade': a.grade,
+        'energy_kwh': a.energy_kwh,
+        'region': a.region,
+        'hardware_type': a.hardware_type,
+    }
+
+
+class AnaliseRecommendationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='Recomendações IA para reduzir o score SCI',
+        parameters=[OpenApiParameter('pk', location='path', type=int)],
+        responses={200: RecommendationsResponseSerializer, 404: OpenApiResponse(description='Não encontrada'), 503: ErrorSerializer},
+        tags=['IA'],
+    )
+    def get(self, request, pk):
+        try:
+            analise = Analise.objects.get(pk=pk, user=request.user)
+        except Analise.DoesNotExist:
+            return Response(status=404)
+        try:
+            recommendations = get_recommendations(_analise_to_dict(analise))
+        except anthropic_exc.APIError:
+            return Response(_AI_ERROR, status=503)
+        return Response({'recommendations': recommendations})
+
+
+class AnaliseSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='Resumo em linguagem natural da análise SCI',
+        parameters=[OpenApiParameter('pk', location='path', type=int)],
+        responses={200: SummaryResponseSerializer, 404: OpenApiResponse(description='Não encontrada'), 503: ErrorSerializer},
+        tags=['IA'],
+    )
+    def get(self, request, pk):
+        try:
+            analise = Analise.objects.get(pk=pk, user=request.user)
+        except Analise.DoesNotExist:
+            return Response(status=404)
+        try:
+            summary = get_summary(_analise_to_dict(analise))
+        except anthropic_exc.APIError:
+            return Response(_AI_ERROR, status=503)
+        return Response({'summary': summary})
+
+
+class AIChatView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='Chat IA sobre suas análises SCI',
+        request=ChatRequestSerializer,
+        responses={200: ChatResponseSerializer, 400: ErrorSerializer, 503: ErrorSerializer},
+        tags=['IA'],
+    )
+    def post(self, request):
+        serializer = ChatRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        qs = Analise.objects.filter(user=request.user)
+        agg = qs.aggregate(total=Count('id'), avg_sci=Avg('sci_score'))
+        grades = {i['grade']: i['count'] for i in qs.values('grade').annotate(count=Count('id'))}
+        recent = list(qs.values('id', 'software_name', 'sci_score', 'grade', 'region', 'energy_kwh')[:10])
+
+        context = {
+            'total_analyses': agg['total'] or 0,
+            'avg_sci_score': round(agg['avg_sci'] or 0, 6),
+            'grade_distribution': grades,
+            'recent_analyses': recent,
+        }
+
+        try:
+            response_text = ai_chat(
+                message=serializer.validated_data['message'],
+                context=context,
+                history=serializer.validated_data.get('history', []),
+            )
+        except anthropic_exc.APIError:
+            return Response(_AI_ERROR, status=503)
+
+        return Response({'response': response_text})
