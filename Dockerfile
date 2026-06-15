@@ -28,8 +28,10 @@ EXPOSE 8000
 
 # Shell form para que $PORT seja expandido.
 # ${PORT:-8000} => usa a porta do Render em produção e 8000 no local.
-# migrate fica no Pre-Deploy Command do Render, NÃO aqui.
-CMD gunicorn ecodash.wsgi:application \
+# migrate roda UMA vez (sequencial, via &&) antes do gunicorn subir os workers.
+# Necessário no plano free, que não tem Pre-Deploy Command nem Shell.
+CMD python manage.py migrate --noinput && \
+    gunicorn ecodash.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
     --workers 4 \
     --timeout 120 \
