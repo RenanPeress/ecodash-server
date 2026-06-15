@@ -141,6 +141,54 @@ class CollectorDownloadView(APIView):
         return response
 
 
+class CollectorDownloadWindowsExeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='Download do executável Windows (.exe)',
+        responses={
+            200: OpenApiResponse(description='Arquivo .exe pré-compilado para Windows'),
+            404: OpenApiResponse(description='Executável não encontrado — execute build_windows_exe.bat primeiro'),
+        },
+        tags=['Coletor'],
+    )
+    def get(self, request):
+        exe_path = Path(settings.BASE_DIR) / 'static' / 'ecodash-collector.exe'
+        if not exe_path.exists():
+            return Response(
+                {'error': 'Executável não disponível. Execute build_windows_exe.bat para gerar.'},
+                status=404,
+            )
+        exe_bytes = exe_path.read_bytes()
+        response = HttpResponse(exe_bytes, content_type='application/octet-stream')
+        response['Content-Disposition'] = 'attachment; filename="ecodash-collector.exe"'
+        return response
+
+
+class CollectorDownloadWindowsConfigView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='Download da configuração personalizada Windows (ecodash.conf)',
+        responses={200: OpenApiResponse(description='Arquivo ecodash.conf com token do usuário')},
+        tags=['Coletor'],
+    )
+    def get(self, request):
+        token, _ = CollectorToken.objects.get_or_create(user=request.user)
+        api_url = getattr(settings, 'ECODASH_BASE_URL', 'http://localhost:8000')
+        config_content = (
+            f"# EcoDash — Configuração do Coletor Windows\n"
+            f"# Gerado em: {timezone.now().isoformat()}\n"
+            f"# AVISO: Não compartilhe este arquivo — contém seu token pessoal.\n\n"
+            f"[ecodash]\n"
+            f"token = {token.token}\n"
+            f"api_url = {api_url}\n"
+        )
+        response = HttpResponse(config_content, content_type='text/plain; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="ecodash.conf"'
+        return response
+
+
 # ── Análises ──────────────────────────────────────────────────────────────────
 
 class AnaliseView(APIView):

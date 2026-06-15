@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     SignupView, LoginView,
     CollectorTokenView, CollectorDownloadView,
+    CollectorDownloadWindowsExeView, CollectorDownloadWindowsConfigView,
     AnaliseView, AnaliseDetailView, AnaliseExportPDFView,
     DashboardView,
     AnaliseRecommendationsView, AnaliseSummaryView, AIChatView,
@@ -17,6 +18,8 @@ urlpatterns = [
     # Coletor
     path('collector/token/', CollectorTokenView.as_view(), name='collector_token'),
     path('collector/download/', CollectorDownloadView.as_view(), name='collector_download'),
+    path('collector/download/windows/exe/', CollectorDownloadWindowsExeView.as_view(), name='collector_download_windows_exe'),
+    path('collector/download/windows/config/', CollectorDownloadWindowsConfigView.as_view(), name='collector_download_windows_config'),
 
     # Análises
     path('analyses/', AnaliseView.as_view(), name='analyse_list'),

@@ -82,7 +82,9 @@ Authorization: Bearer <access_token>
 |---|---|---|
 | `GET` | `/api/collector/token/` | Ver token do coletor |
 | `POST` | `/api/collector/token/` | Regenerar token |
-| `GET` | `/api/collector/download/` | Baixar `ecodash-collector.py` pré-configurado |
+| `GET` | `/api/collector/download/` | Baixar `ecodash-collector.py` (Linux/macOS) |
+| `GET` | `/api/collector/download/windows/exe/` | Baixar `ecodash-collector.exe` (Windows standalone) |
+| `GET` | `/api/collector/download/windows/config/` | Baixar `ecodash.conf` personalizado (token do usuário) |
 
 ### Análises
 
@@ -120,7 +122,9 @@ ecodash-server/
 │   ├── pdf.py               # Geração do relatório PDF (WeasyPrint)
 │   ├── authentication.py    # Autenticação por X-Collector-Token
 │   └── urls.py              # Rotas da API
-├── collector_template.py    # Script Python entregue ao usuário
+├── collector_template.py    # Script Python entregue ao usuário (Linux/macOS)
+├── collector_windows.py     # Script Python para gerar o .exe Windows via PyInstaller
+├── build_windows_exe.bat    # Script de build do .exe (rodar no Windows)
 ├── metrics_sci.py           # Cálculo SCI local (para testes)
 ├── requirements.txt
 ├── Dockerfile
