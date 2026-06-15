@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     SignupView, LoginView,
     CollectorTokenView, CollectorDownloadView,
-    AnaliseView, AnaliseDetailView,
+    AnaliseView, AnaliseDetailView, AnaliseExportPDFView,
     DashboardView,
     AnaliseRecommendationsView, AnaliseSummaryView, AIChatView,
 )
@@ -21,6 +21,7 @@ urlpatterns = [
     # Análises
     path('analyses/', AnaliseView.as_view(), name='analyse_list'),
     path('analyses/<int:pk>/', AnaliseDetailView.as_view(), name='analyse_detail'),
+    path('analyses/<int:pk>/export/pdf/', AnaliseExportPDFView.as_view(), name='analyse_export_pdf'),
 
     # Dashboard
     path('dashboard/', DashboardView.as_view(), name='dashboard'),

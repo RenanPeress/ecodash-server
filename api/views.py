@@ -14,6 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .authentication import CollectorTokenAuthentication
 from .models import CollectorToken, Analise
+from .pdf import generate_pdf
 from .serializers import (
     SignupRequestSerializer, LoginRequestSerializer, AuthResponseSerializer,
     CollectorTokenResponseSerializer, CollectorTokenRegenResponseSerializer,
@@ -220,6 +221,33 @@ class AnaliseDetailView(APIView):
     def delete(self, request, pk):
         Analise.objects.filter(pk=pk, user=request.user).delete()
         return Response(status=204)
+
+
+class AnaliseExportPDFView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='Exportar análise como PDF',
+        parameters=[
+            OpenApiParameter(name='pk', location='path', description='ID da análise', required=True, type=int),
+        ],
+        responses={
+            200: OpenApiResponse(description='Arquivo PDF para download'),
+            404: OpenApiResponse(description='Análise não encontrada'),
+        },
+        tags=['Análises'],
+    )
+    def get(self, request, pk):
+        try:
+            analise = Analise.objects.select_related('user').get(pk=pk, user=request.user)
+        except Analise.DoesNotExist:
+            return Response(status=404)
+
+        pdf_bytes = generate_pdf(analise)
+        filename = f'ecodash-relatorio-{analise.id}.pdf'
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
