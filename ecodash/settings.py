@@ -188,4 +188,4 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
 
 # ─── EcoDash ──────────────────────────────────────────────────────────────────
-ECODASH_BASE_URL = os.environ.get("ECODASH_BASE_URL", "http://localhost:8000")
+ECODASH_BASE_URL = os.environ.get("ECODASH_BASE_URL", "https://ecodash-server.onrender.com")
