@@ -128,7 +128,7 @@ class CollectorDownloadView(APIView):
     def get(self, request):
         token, _ = CollectorToken.objects.get_or_create(user=request.user)
         template_path = Path(settings.BASE_DIR) / 'collector_template.py'
-        api_url = getattr(settings, 'ECODASH_BASE_URL', 'http://localhost:8000')
+        api_url = getattr(settings, 'ECODASH_BASE_URL', 'https://ecodash-server.onrender.com')
 
         script = (template_path.read_text()
                   .replace('{{TOKEN}}', token.token)
@@ -175,7 +175,7 @@ class CollectorDownloadWindowsConfigView(APIView):
     )
     def get(self, request):
         token, _ = CollectorToken.objects.get_or_create(user=request.user)
-        api_url = getattr(settings, 'ECODASH_BASE_URL', 'http://localhost:8000')
+        api_url = getattr(settings, 'ECODASH_BASE_URL', 'https://ecodash-server.onrender.com')
         config_content = (
             f"# EcoDash — Configuração do Coletor Windows\n"
             f"# Gerado em: {timezone.now().isoformat()}\n"
